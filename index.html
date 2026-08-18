@@ -29,7 +29,7 @@
       position: absolute;
       top: 16px;
       left: 16px;
-      z-index: 10000; /* Priority layering so controls sit on top of the 3D surface */
+      z-index: 10000;
       background: var(--panel);
       backdrop-filter: blur(16px);
       padding: 18px;
@@ -106,19 +106,6 @@
     .stat-value.alert { color: var(--danger); font-weight: bold; }
     .stat-value.highlight { color: var(--warning); font-weight: bold; }
     
-    #energyPanel {
-      position: absolute;
-      bottom: 20px;
-      left: 16px;
-      z-index: 1000;
-      background: var(--panel);
-      backdrop-filter: blur(12px);
-      padding: 12px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      width: 330px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    }
     #newmanOverlay {
       position: absolute;
       bottom: 20px;
@@ -165,7 +152,7 @@
       position: absolute;
       top: 0;
       left: 0;
-      z-index: 1; /* Keeps the WebGL renderer below the UI panels */
+      z-index: 1;
     }
   </style>
 
@@ -181,9 +168,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 
-  <!-- Animation & Charting -->
+  <!-- Animation Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -246,11 +232,6 @@
     <div class="stat-row"><span>Relative Energy:</span> <span id="energyVal" class="stat-value">0 kJ/mol</span></div>
     <div class="stat-row"><span>View Angle:</span> <span id="viewAngleVal" class="stat-value">3D Studio Orbit</span></div>
   </div>
-</div>
-
-<div id="energyPanel">
-  <label style="margin-bottom:6px;">Conformational Energy Surface</label>
-  <canvas id="energyChart" height="110"></canvas>
 </div>
 
 <div id="newmanOverlay">
@@ -467,41 +448,7 @@
     orbitalGroup.add(lobe);
   }
 
-  // --- 6. Energy Profile Chart ---
-  const ctx = document.getElementById('energyChart').getContext('2d');
-  const energyChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Chair', 'Half-Chair', 'Twist-Boat', 'Boat', 'Chair Flip'],
-      datasets: [{
-        label: 'Potential Energy (kJ/mol)',
-        data: [0, 45, 23, 30, 0],
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.25)',
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: ['#ef4444', '#94a3b8', '#94a3b8', '#94a3b8', '#94a3b8'],
-        pointRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#9ca3af', font: { size: 9 } }, grid: { display: false } },
-        y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
-      }
-    }
-  });
-
-  function updateChartHighlight(index) {
-    const colors = ['#94a3b8', '#94a3b8', '#94a3b8', '#94a3b8', '#94a3b8'];
-    if (index >= 0) colors[index] = '#ef4444';
-    energyChart.data.datasets[0].pointBackgroundColor = colors;
-    energyChart.update();
-  }
-
-  // --- 7. Interactive Measurement Tool ---
+  // --- 6. Interactive Measurement Tool ---
   let isMeasuring = false;
   let selectedAtoms = [];
   let measurementLinesGroup = new THREE.Group();
@@ -533,7 +480,7 @@
   window.addEventListener('click', (event) => {
     if (!isMeasuring) return;
     
-    if (event.target.closest('#hud') || event.target.closest('#energyPanel') || event.target.closest('#newmanOverlay')) return;
+    if (event.target.closest('#hud') || event.target.closest('#newmanOverlay')) return;
 
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -619,7 +566,7 @@
     return Math.atan2(y, x) * (180 / Math.PI);
   }
 
-  // --- 8. Chair-Flip Smooth Morphing Animation ---
+  // --- 7. Chair-Flip Smooth Morphing Animation ---
   let isAnimatingFlip = false;
   function triggerChairFlipAnimation() {
     if (!isCyclohexaneMode || isAnimatingFlip) return;
@@ -644,14 +591,12 @@
         ease: "power2.inOut",
         onStart: () => {
           document.getElementById('energyVal').innerText = target.energy + " kJ/mol";
-          const keys = ['chair', 'halfChair', 'twist', 'boat', 'chairFlipped'];
-          updateChartHighlight(keys.indexOf(stepKey));
         }
       });
     });
   }
 
-  // --- 9. Spatial Mechanics ---
+  // --- 8. Spatial Mechanics ---
   function updateHydrogensAndBonds() {
     if (!isCyclohexaneMode || carbonMeshes.length < 6) return;
     for (let i = 0; i < 6; i++) {
@@ -680,7 +625,7 @@
     }
   }
 
-  // --- 10. Interactivity ---
+  // --- 9. Interactivity ---
   let isNewman = false;
   let showOrbitals = true;
   let isHighlighted = false;
@@ -691,9 +636,6 @@
     if (!target || carbonMeshes.length === 0) return;
 
     document.getElementById('energyVal').innerText = target.energy + " kJ/mol";
-
-    const keys = ['chair', 'halfChair', 'twist', 'boat', 'chairFlipped'];
-    updateChartHighlight(keys.indexOf(key));
 
     carbonMeshes.forEach((mesh, idx) => {
       gsap.to(mesh.position, {
@@ -773,7 +715,7 @@
     rebuildLabels();
   }
 
-  // --- 11. Labels Generator ---
+  // --- 10. Labels Generator ---
   function clearLabels() {
     const container = document.getElementById('labelsContainer');
     container.innerHTML = '';
@@ -820,7 +762,7 @@
     });
   }
 
-  // --- 12. PubChem API & Custom SDF Renderer ---
+  // --- 11. PubChem API & Custom SDF Renderer ---
   async function searchPubChem() {
     const query = document.getElementById('chemSearchInput').value.trim();
     if (!query) return;
@@ -924,7 +866,6 @@
     document.getElementById('energyVal').innerText = "N/A";
     document.getElementById('distVal').innerText = "--";
     document.getElementById('strainVal').innerText = "N/A";
-    updateChartHighlight(-1);
     rebuildLabels();
   }
 
@@ -938,7 +879,7 @@
     customMoleculeGroup.add(bond);
   }
 
-  // --- 13. Main Loop ---
+  // --- 12. Main Loop ---
   initCyclohexane();
 
   function animate() {
