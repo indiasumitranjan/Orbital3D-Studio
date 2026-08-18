@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Orbital3D Studio | Professional Molecular Engine</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚛️</text></svg>">
+  <style>
+    :root {
+      --bg: #06090e;
+      --panel: rgba(13, 19, 33, 0.92);
+      --accent: #3b82f6;
+      --glow: #60a5fa;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      user-select: none;
+      touch-action: none;
+    }
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      width: 330px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.7);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    h1 {
+      font-size: 17px;
+      margin: 0 0 12px 0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: 0.5px;
+    }
+    .badge {
+      font-size: 10px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      padding: 3px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .control-group { margin-bottom: 12px; }
+    label {
+      font-size: 11px;
+      color: #9ca3af;
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    select, button, input {
+      width: 100%;
+      background: #1e293b;
+      color: white;
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 6px;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    input { cursor: text; font-weight: 400; }
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); }
+    button:hover { background: #334155; border-color: var(--accent); }
+    button.primary { background: var(--accent); border: none; }
+    button.primary:hover { background: #2563eb; }
+    button.active { background: #10b981; border-color: #059669; }
+    .search-box { display: flex; gap: 6px; }
+    .search-box button { width: 80px; margin-bottom: 0; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; }
+    .stats {
+      font-family: 'JetBrains Mono', monospace, system-ui;
+      font-size: 11px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .stat-value { color: var(--glow); font-weight: 600; }
+    .stat-value.alert { color: var(--danger); font-weight: bold; }
+    .stat-value.highlight { color: var(--warning); font-weight: bold; }
+    
+    #energyPanel {
+      position: absolute;
+      bottom: 20px;
+      left: 16px;
+      z-index: 10;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      width: 330px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    #newmanOverlay {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      display: none;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .atom-label {
+      position: absolute;
+      color: #ffffff;
+      font-family: monospace;
+      font-size: 10px;
+      font-weight: bold;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      white-space: nowrap;
+      z-index: 5;
+    }
+    #measureTooltip {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      z-index: 10;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+  </style>
+
+  <!-- Three.js & Core Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Post-Processing Pipeline -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+  <!-- Animation & Charting -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div id="labelsContainer"></div>
+
+<div id="measureTooltip">
+  <strong>Measurement Tool:</strong> <span id="measureModeStatus">Disabled</span><br>
+  <span id="measureInstruction" style="color: #9ca3af; font-size: 11px;">Enable mode below and click atoms.</span>
+</div>
+
+<div id="hud">
+  <h1>Orbital3D Studio <span class="badge">PRO</span></h1>
+  
+  <div class="control-group">
+    <label>PubChem Search Engine</label>
+    <div class="search-box">
+      <input type="text" id="chemSearchInput" placeholder="e.g. ethanol, benzene, caffeine">
+      <button class="primary" onclick="searchPubChem()">Load</button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Cyclohexane Conformers</label>
+    <select id="conformerSelect" onchange="switchConformer(this.value)">
+      <option value="chair">Chair Conformation (0 kJ/mol)</option>
+      <option value="halfChair">Half-Chair State (45 kJ/mol)</option>
+      <option value="twist">Twist-Boat State (23 kJ/mol)</option>
+      <option value="boat">Boat Conformation (30 kJ/mol)</option>
+      <option value="chairFlipped">Flipped Chair (0 kJ/mol)</option>
+    </select>
+    <button class="primary" onclick="triggerChairFlipAnimation()">Animate Chair Inversion (Ring Flip)</button>
+  </div>
+
+  <div class="control-group">
+    <label>Interactive Measurement Engine</label>
+    <div class="btn-row">
+      <button id="measureToggleBtn" onclick="toggleMeasurementMode()">Click Measure: OFF</button>
+      <button onclick="clearSelection()">Clear Select</button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Display & Studio Lighting</label>
+    <button onclick="toggleNewmanView()">Toggle Newman Projection Lock</button>
+    <div class="btn-row">
+      <button onclick="toggleRepresentation()">Display: <span id="repLabel">Ball & Stick</span></button>
+      <button onclick="toggleLabels()">Labels: <span id="labelStateLabel">OFF</span></button>
+    </div>
+    <div class="btn-row">
+      <button onclick="toggleBloom()">Bloom Glow: <span id="bloomStatusLabel">ON</span></button>
+      <button onclick="toggleOrbitals()">Toggle Lone Pairs</button>
+    </div>
+    <button onclick="toggleAxialEquatorial()">Highlight Axial / Equatorial</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-row"><span>C1-C4 Distance:</span> <span id="distVal" class="stat-value">--</span></div>
+    <div class="stat-row"><span>Flagpole Strain:</span> <span id="strainVal" class="stat-value">None</span></div>
+    <div class="stat-row"><span>Picked Angle:</span> <span id="dihedralVal" class="stat-value">--</span></div>
+    <div class="stat-row"><span>Relative Energy:</span> <span id="energyVal" class="stat-value">0 kJ/mol</span></div>
+    <div class="stat-row"><span>View Angle:</span> <span id="viewAngleVal" class="stat-value">3D Studio Orbit</span></div>
+  </div>
+</div>
+
+<div id="energyPanel">
+  <label style="margin-bottom:6px;">Conformational Energy Surface</label>
+  <canvas id="energyChart" height="110"></canvas>
+</div>
+
+<div id="newmanOverlay">
+  <svg width="110" height="110" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="35" stroke="#475569" stroke-width="3" fill="none" />
+    <circle cx="50" cy="50" r="6" fill="#3b82f6" />
+    <line x1="50" y1="50" x2="50" y2="10" stroke="#3b82f6" stroke-width="3" />
+    <line x1="50" y1="50" x2="15" y2="70" stroke="#3b82f6" stroke-width="3" />
+    <line x1="50" y1="50" x2="85" y2="70" stroke="#3b82f6" stroke-width="3" />
+    <line x1="50" y1="15" x2="50" y2="0" stroke="#f59e0b" stroke-width="3" />
+    <line x1="15" y1="70" x2="0" y2="80" stroke="#f59e0b" stroke-width="3" />
+    <line x1="85" y1="70" x2="100" y2="80" stroke="#f59e0b" stroke-width="3" />
+  </svg>
+  <div style="font-size:10px; color:#9ca3af; margin-top:2px;">Newman Dihedral Camera</div>
+</div>
+
+<script>
+  // --- 1. Scene, Renderer & Studio Lighting Setup ---
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x06090e);
+
+  const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(4.5, 3.5, 6.5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  // Studio Lighting System
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  keyLight.position.set(8, 15, 10);
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0x60a5fa, 0.6);
+  fillLight.position.set(-10, -5, -8);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xa7f3d0, 0.8);
+  rimLight.position.set(0, 10, -10);
+  scene.add(rimLight);
+
+  // --- 2. Unreal Bloom Post-Processing Pipeline ---
+  const composer = new THREE.EffectComposer(renderer);
+  const renderPass = new THREE.RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  const bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.65,
+    0.4,
+    0.82
+  );
+  composer.addPass(bloomPass);
+
+  let bloomEnabled = true;
+  function toggleBloom() {
+    bloomEnabled = !bloomEnabled;
+    bloomPass.enabled = bloomEnabled;
+    document.getElementById('bloomStatusLabel').innerText = bloomEnabled ? "ON" : "OFF";
+  }
+
+  // --- 3. Lone Pair Shader ("Rabbit Ears") ---
+  const rabbitEarMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      color: { value: new THREE.Color(0x3b82f6) },
+      fresnelBias: { value: 0.15 },
+      fresnelPower: { value: 2.5 },
+      fresnelScale: { value: 1.2 }
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vViewPosition = -mvPosition.xyz;
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 color;
+      uniform float fresnelBias;
+      uniform float fresnelPower;
+      uniform float fresnelScale;
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+      void main() {
+        vec3 viewDir = normalize(vViewPosition);
+        float fresnelFactor = fresnelBias + fresnelScale * pow(1.0 + dot(vNormal, -viewDir), fresnelPower);
+        gl_FragColor = vec4(color, fresnelFactor * 0.95);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide
+  });
+
+  // --- 4. Conformers Coordinates ---
+  const conformers = {
+    chair: {
+      energy: 0,
+      coords: [
+        [0.0, 0.5, 1.25], [1.2, -0.2, 0.62], [1.2, 0.2, -0.62],
+        [0.0, -0.5, -1.25], [-1.2, 0.2, -0.62], [-1.2, -0.2, 0.62]
+      ]
+    },
+    halfChair: {
+      energy: 45,
+      coords: [
+        [0.0, 0.9, 1.2], [1.2, 0.3, 0.6], [1.2, 0.1, -0.6],
+        [0.0, -0.3, -1.2], [-1.2, -0.3, -0.6], [-1.2, -0.1, 0.6]
+      ]
+    },
+    twist: {
+      energy: 23,
+      coords: [
+        [0.4, 0.6, 1.1], [1.3, -0.1, 0.4], [0.9, 0.4, -0.7],
+        [-0.4, -0.6, -1.1], [-1.3, 0.1, -0.4], [-0.9, -0.4, 0.7]
+      ]
+    },
+    boat: {
+      energy: 30,
+      coords: [
+        [0.0, 0.8, 1.25], [1.2, -0.2, 0.62], [1.2, 0.2, -0.62],
+        [0.0, 0.8, -1.25], [-1.2, -0.2, -0.62], [-1.2, -0.2, 0.62]
+      ]
+    },
+    chairFlipped: {
+      energy: 0,
+      coords: [
+        [0.0, -0.5, 1.25], [1.2, 0.2, 0.62], [1.2, -0.2, -0.62],
+        [0.0, 0.5, -1.25], [-1.2, -0.2, -0.62], [-1.2, 0.2, 0.62]
+      ]
+    }
+  };
+
+  // State Management
+  let carbonMeshes = [];
+  let hydrogenMeshes = [];
+  let bondMeshes = [];
+  let pubchemAtoms = [];
+  let customMoleculeGroup = new THREE.Group();
+  scene.add(customMoleculeGroup);
+
+  let isSpaceFilling = false;
+  let showLabels = false;
+  let labelElements = [];
+  let isCyclohexaneMode = true;
+
+  const carbonMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.15, metalness: 0.1 });
+  const hydrogenMat = new THREE.MeshStandardMaterial({ color: 0xf9fafb, roughness: 0.2 });
+  const bondMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3 });
+
+  const cGeo = new THREE.SphereGeometry(0.28, 32, 32);
+  const hGeo = new THREE.SphereGeometry(0.16, 32, 32);
+
+  const cpkRadii = { 'H': 0.35, 'C': 0.7, 'O': 0.65, 'N': 0.65, 'S': 0.8, 'P': 0.8, 'F': 0.5, 'CL': 0.75 };
+  const ballRadii = { 'H': 0.16, 'C': 0.28, 'O': 0.25, 'N': 0.26, 'S': 0.32, 'P': 0.32, 'F': 0.2, 'CL': 0.3 };
+
+  function initCyclohexane() {
+    isCyclohexaneMode = true;
+    clearCustomMolecule();
+    
+    conformers.chair.coords.forEach((pos, idx) => {
+      const mesh = new THREE.Mesh(cGeo.clone(), carbonMat.clone());
+      mesh.position.set(...pos);
+      mesh.userData = { symbol: `C${idx+1}`, isAtom: true };
+      scene.add(mesh);
+      carbonMeshes.push(mesh);
+    });
+
+    for (let i = 0; i < 6; i++) {
+      const hAxial = new THREE.Mesh(hGeo.clone(), hydrogenMat.clone());
+      const hEquat = new THREE.Mesh(hGeo.clone(), hydrogenMat.clone());
+      
+      hAxial.userData = { type: 'axial', parentIdx: i, symbol: `H${i*2+1}`, isAtom: true };
+      hEquat.userData = { type: 'equatorial', parentIdx: i, symbol: `H${i*2+2}`, isAtom: true };
+
+      scene.add(hAxial, hEquat);
+      hydrogenMeshes.push(hAxial, hEquat);
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const bondGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 16);
+      const bond = new THREE.Mesh(bondGeo, bondMat.clone());
+      scene.add(bond);
+      bondMeshes.push(bond);
+    }
+
+    addOrbitalLobe(carbonMeshes[0], 0.4);
+    addOrbitalLobe(carbonMeshes[0], -0.4);
+
+    rebuildLabels();
+  }
+
+  // --- 5. Orbitals ---
+  const orbitalGroup = new THREE.Group();
+  function addOrbitalLobe(parentMesh, rotZ) {
+    const lobeGeo = new THREE.SphereGeometry(0.28, 32, 32);
+    lobeGeo.scale(0.8, 2.2, 0.8);
+    const lobe = new THREE.Mesh(lobeGeo, rabbitEarMaterial);
+    lobe.position.set(0, 0.45, 0);
+    lobe.rotation.z = rotZ;
+    parentMesh.add(lobe);
+    orbitalGroup.add(lobe);
+  }
+
+  // --- 6. Energy Profile Chart ---
+  const ctx = document.getElementById('energyChart').getContext('2d');
+  const energyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Chair', 'Half-Chair', 'Twist-Boat', 'Boat', 'Chair Flip'],
+      datasets: [{
+        label: 'Potential Energy (kJ/mol)',
+        data: [0, 45, 23, 30, 0],
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.25)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: ['#ef4444', '#94a3b8', '#94a3b8', '#94a3b8', '#94a3b8'],
+        pointRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  function updateChartHighlight(index) {
+    const colors = ['#94a3b8', '#94a3b8', '#94a3b8', '#94a3b8', '#94a3b8'];
+    if (index >= 0) colors[index] = '#ef4444';
+    energyChart.data.datasets[0].pointBackgroundColor = colors;
+    energyChart.update();
+  }
+
+  // --- 7. Interactive Measurement Tool ---
+  let isMeasuring = false;
+  let selectedAtoms = [];
+  let measurementLinesGroup = new THREE.Group();
+  scene.add(measurementLinesGroup);
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  function toggleMeasurementMode() {
+    isMeasuring = !isMeasuring;
+    const btn = document.getElementById('measureToggleBtn');
+    const status = document.getElementById('measureModeStatus');
+    const instruction = document.getElementById('measureInstruction');
+
+    if (isMeasuring) {
+      btn.className = "active";
+      btn.innerText = "Click Measure: ON";
+      status.innerText = "Active - Pick Atoms";
+      instruction.innerText = "Click 2 atoms for Distance, or 4 atoms for Dihedral Angle.";
+    } else {
+      btn.className = "";
+      btn.innerText = "Click Measure: OFF";
+      status.innerText = "Disabled";
+      instruction.innerText = "Enable mode below and click atoms.";
+      clearSelection();
+    }
+  }
+
+  window.addEventListener('click', (event) => {
+    if (!isMeasuring) return;
+    
+    if (event.target.closest('#hud') || event.target.closest('#energyPanel') || event.target.closest('#newmanOverlay')) return;
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const targetObjects = isCyclohexaneMode 
+      ? [...carbonMeshes, ...hydrogenMeshes]
+      : pubchemAtoms.map(a => a.mesh);
+
+    const intersects = raycaster.intersectObjects(targetObjects);
+
+    if (intersects.length > 0) {
+      const clickedAtom = intersects[0].object;
+      
+      if (selectedAtoms.includes(clickedAtom)) {
+        selectedAtoms = selectedAtoms.filter(a => a !== clickedAtom);
+        clickedAtom.material.emissive.setHex(0x000000);
+      } else {
+        if (selectedAtoms.length >= 4) clearSelection();
+        selectedAtoms.push(clickedAtom);
+        clickedAtom.material.emissive.setHex(0x60a5fa);
+      }
+      updateMeasurements();
+    }
+  });
+
+  function clearSelection() {
+    selectedAtoms.forEach(a => a.material.emissive.setHex(0x000000));
+    selectedAtoms = [];
+    while(measurementLinesGroup.children.length > 0) {
+      measurementLinesGroup.remove(measurementLinesGroup.children[0]);
+    }
+    document.getElementById('dihedralVal').innerText = "--";
+  }
+
+  function updateMeasurements() {
+    while(measurementLinesGroup.children.length > 0) {
+      measurementLinesGroup.remove(measurementLinesGroup.children[0]);
+    }
+
+    if (selectedAtoms.length === 2) {
+      const p1 = selectedAtoms[0].position;
+      const p2 = selectedAtoms[1].position;
+      const dist = p1.distanceTo(p2);
+
+      drawSpatialLine(p1, p2, 0x10b981);
+      document.getElementById('dihedralVal').innerText = `Dist: ${dist.toFixed(2)} Å`;
+    } else if (selectedAtoms.length === 4) {
+      const p1 = selectedAtoms[0].position;
+      const p2 = selectedAtoms[1].position;
+      const p3 = selectedAtoms[2].position;
+      const p4 = selectedAtoms[3].position;
+
+      drawSpatialLine(p1, p2, 0xf59e0b);
+      drawSpatialLine(p2, p3, 0xf59e0b);
+      drawSpatialLine(p3, p4, 0xf59e0b);
+
+      const angle = calculateDihedralAngle(p1, p2, p3, p4);
+      document.getElementById('dihedralVal').innerText = `Dihedral: ${angle.toFixed(1)}°`;
+    }
+  }
+
+  function drawSpatialLine(p1, p2, colorHex) {
+    const points = [p1, p2];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 3 });
+    const line = new THREE.Line(geometry, material);
+    measurementLinesGroup.add(line);
+  }
+
+  function calculateDihedralAngle(p1, p2, p3, p4) {
+    const b1 = new THREE.Vector3().subVectors(p2, p1);
+    const b2 = new THREE.Vector3().subVectors(p3, p2);
+    const b3 = new THREE.Vector3().subVectors(p4, p3);
+
+    const n1 = new THREE.Vector3().crossVectors(b1, b2).normalize();
+    const n2 = new THREE.Vector3().crossVectors(b2, b3).normalize();
+    const m1 = new THREE.Vector3().crossVectors(n1, b2.clone().normalize());
+    
+    const x = n1.dot(n2);
+    const y = m1.dot(n2);
+
+    return Math.atan2(y, x) * (180 / Math.PI);
+  }
+
+  // --- 8. Chair-Flip Smooth Morphing Animation ---
+  let isAnimatingFlip = false;
+  function triggerChairFlipAnimation() {
+    if (!isCyclohexaneMode || isAnimatingFlip) return;
+    isAnimatingFlip = true;
+
+    const timeline = gsap.timeline({
+      onComplete: () => {
+        isAnimatingFlip = false;
+        document.getElementById('conformerSelect').value = "chairFlipped";
+      }
+    });
+
+    const sequence = ['halfChair', 'twist', 'boat', 'chairFlipped'];
+    
+    sequence.forEach((stepKey) => {
+      const target = conformers[stepKey];
+      timeline.to(carbonMeshes.map(m => m.position), {
+        x: (i) => target.coords[i][0],
+        y: (i) => target.coords[i][1],
+        z: (i) => target.coords[i][2],
+        duration: 0.9,
+        ease: "power2.inOut",
+        onStart: () => {
+          document.getElementById('energyVal').innerText = target.energy + " kJ/mol";
+          const keys = ['chair', 'halfChair', 'twist', 'boat', 'chairFlipped'];
+          updateChartHighlight(keys.indexOf(stepKey));
+        }
+      });
+    });
+  }
+
+  // --- 9. Spatial Mechanics ---
+  function updateHydrogensAndBonds() {
+    if (!isCyclohexaneMode || carbonMeshes.length < 6) return;
+    for (let i = 0; i < 6; i++) {
+      const cPos = carbonMeshes[i].position;
+      const hAxial = hydrogenMeshes[i * 2];
+      const hEquat = hydrogenMeshes[i * 2 + 1];
+
+      if (!hAxial || !hEquat) continue;
+
+      const axDir = new THREE.Vector3(0, i % 2 === 0 ? 1 : -1, 0);
+      const eqDir = cPos.clone().setY(0).normalize();
+
+      const hDist = isSpaceFilling ? 0.75 : 0.95;
+      hAxial.position.copy(cPos).add(axDir.multiplyScalar(hDist));
+      hEquat.position.copy(cPos).add(eqDir.multiplyScalar(hDist));
+
+      const p1 = carbonMeshes[i].position;
+      const p2 = carbonMeshes[(i + 1) % 6].position;
+      const bond = bondMeshes[i];
+
+      const dist = p1.distanceTo(p2);
+      bond.scale.set(1, dist, 1);
+      bond.position.copy(p1).add(p2).multiplyScalar(0.5);
+      bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+      bond.visible = !isSpaceFilling;
+    }
+  }
+
+  // --- 10. Interactivity ---
+  let isNewman = false;
+  let showOrbitals = true;
+  let isHighlighted = false;
+
+  function switchConformer(key) {
+    if (!isCyclohexaneMode) initCyclohexane();
+    const target = conformers[key];
+    if (!target || carbonMeshes.length === 0) return;
+
+    document.getElementById('energyVal').innerText = target.energy + " kJ/mol";
+
+    const keys = ['chair', 'halfChair', 'twist', 'boat', 'chairFlipped'];
+    updateChartHighlight(keys.indexOf(key));
+
+    carbonMeshes.forEach((mesh, idx) => {
+      gsap.to(mesh.position, {
+        x: target.coords[idx][0], y: target.coords[idx][1], z: target.coords[idx][2],
+        duration: 1.0, ease: "power2.inOut"
+      });
+    });
+  }
+
+  function toggleNewmanView() {
+    isNewman = !isNewman;
+    const overlay = document.getElementById('newmanOverlay');
+    
+    if (isNewman && isCyclohexaneMode && carbonMeshes.length >= 2) {
+      const c1 = carbonMeshes[0].position;
+      const c2 = carbonMeshes[1].position;
+      const viewDir = new THREE.Vector3().subVectors(c2, c1).normalize();
+      const camPos = c1.clone().sub(viewDir.multiplyScalar(4.5));
+
+      gsap.to(camera.position, { x: camPos.x, y: camPos.y, z: camPos.z, duration: 1.0 });
+      controls.target.copy(c1);
+      document.getElementById('viewAngleVal').innerText = "Newman Locked (C1-C2)";
+      overlay.style.display = 'block';
+    } else {
+      gsap.to(camera.position, { x: 4.5, y: 3.5, z: 6.5, duration: 1.0 });
+      controls.target.set(0, 0, 0);
+      document.getElementById('viewAngleVal').innerText = "3D Studio Orbit";
+      overlay.style.display = 'none';
+    }
+  }
+
+  function toggleOrbitals() {
+    showOrbitals = !showOrbitals;
+    orbitalGroup.children.forEach(child => child.visible = showOrbitals);
+  }
+
+  function toggleAxialEquatorial() {
+    if (!isCyclohexaneMode) return;
+    isHighlighted = !isHighlighted;
+    hydrogenMeshes.forEach(mesh => {
+      if (isHighlighted) {
+        mesh.material.color.setHex(mesh.userData.type === 'axial' ? 0x3b82f6 : 0xf59e0b);
+      } else {
+        mesh.material.color.setHex(0xf3f4f6);
+      }
+    });
+  }
+
+  function toggleRepresentation() {
+    isSpaceFilling = !isSpaceFilling;
+    document.getElementById('repLabel').innerText = isSpaceFilling ? "CPK Space-Fill" : "Ball & Stick";
+
+    if (isCyclohexaneMode) {
+      const cR = isSpaceFilling ? cpkRadii['C'] : ballRadii['C'];
+      const hR = isSpaceFilling ? cpkRadii['H'] : ballRadii['H'];
+      
+      carbonMeshes.forEach(m => gsap.to(m.scale, { x: cR / 0.28, y: cR / 0.28, z: cR / 0.28, duration: 0.5 }));
+      hydrogenMeshes.forEach(m => gsap.to(m.scale, { x: hR / 0.16, y: hR / 0.16, z: hR / 0.16, duration: 0.5 }));
+      bondMeshes.forEach(b => b.visible = !isSpaceFilling);
+    } else {
+      pubchemAtoms.forEach(item => {
+        const sym = item.symbol.toUpperCase();
+        const baseR = ballRadii[sym] || 0.25;
+        const targetR = isSpaceFilling ? (cpkRadii[sym] || 0.6) : baseR;
+        const scaleFactor = targetR / baseR;
+        gsap.to(item.mesh.scale, { x: scaleFactor, y: scaleFactor, z: scaleFactor, duration: 0.5 });
+      });
+      customMoleculeGroup.children.forEach(c => {
+        if (c.isCylinder) c.visible = !isSpaceFilling;
+      });
+    }
+  }
+
+  function toggleLabels() {
+    showLabels = !showLabels;
+    document.getElementById('labelStateLabel').innerText = showLabels ? "ON" : "OFF";
+    rebuildLabels();
+  }
+
+  // --- 11. Labels Generator ---
+  function clearLabels() {
+    const container = document.getElementById('labelsContainer');
+    container.innerHTML = '';
+    labelElements = [];
+  }
+
+  function rebuildLabels() {
+    clearLabels();
+    if (!showLabels) return;
+
+    const container = document.getElementById('labelsContainer');
+    const targets = isCyclohexaneMode 
+      ? [...carbonMeshes, ...hydrogenMeshes] 
+      : pubchemAtoms.map(a => a.mesh);
+
+    targets.forEach(mesh => {
+      const el = document.createElement('div');
+      el.className = 'atom-label';
+      el.innerText = mesh.userData.symbol || 'Atom';
+      container.appendChild(el);
+      labelElements.push({ element: el, mesh: mesh });
+    });
+  }
+
+  function updateLabelsPosition() {
+    if (!showLabels || labelElements.length === 0) return;
+
+    const tempV = new THREE.Vector3();
+    labelElements.forEach(item => {
+      item.mesh.getWorldPosition(tempV);
+      tempV.project(camera);
+
+      if (tempV.z > 1.0) {
+        item.element.style.display = 'none';
+        return;
+      }
+
+      const x = (tempV.x * .5 + .5) * window.innerWidth;
+      const y = (tempV.y * -.5 + .5) * window.innerHeight;
+
+      item.element.style.display = 'block';
+      item.element.style.left = `${x}px`;
+      item.element.style.top = `${y}px`;
+    });
+  }
+
+  // --- 12. PubChem API & Custom SDF Renderer ---
+  async function searchPubChem() {
+    const query = document.getElementById('chemSearchInput').value.trim();
+    if (!query) return;
+
+    try {
+      const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/SDF?record_type=3d`);
+      if (!response.ok) throw new Error('Molecule 3D coordinates not found');
+      const sdfText = await response.text();
+      parseAndRenderSDF(sdfText);
+    } catch (err) {
+      alert("Error loading molecule from PubChem: " + err.message);
+    }
+  }
+
+  function clearCustomMolecule() {
+    carbonMeshes.forEach(m => scene.remove(m));
+    hydrogenMeshes.forEach(m => scene.remove(m));
+    bondMeshes.forEach(m => scene.remove(m));
+    carbonMeshes = []; hydrogenMeshes = []; bondMeshes = []; pubchemAtoms = [];
+    
+    while(customMoleculeGroup.children.length > 0){ 
+      customMoleculeGroup.remove(customMoleculeGroup.children[0]); 
+    }
+    clearLabels();
+    clearSelection();
+  }
+
+  function parseAndRenderSDF(sdf) {
+    isCyclohexaneMode = false;
+    clearCustomMolecule();
+
+    const lines = sdf.split('\n');
+    const countsLine = lines[3];
+    if (!countsLine) return;
+
+    const numAtoms = parseInt(countsLine.substring(0, 3).trim());
+    const numBonds = parseInt(countsLine.substring(3, 6).trim()) || 0;
+
+    const atoms = [];
+    let lineIdx = 4;
+
+    for (let i = 0; i < numAtoms; i++, lineIdx++) {
+      const line = lines[lineIdx];
+      const x = parseFloat(line.substring(0, 10).trim());
+      const y = parseFloat(line.substring(10, 20).trim());
+      const z = parseFloat(line.substring(20, 30).trim());
+      const symbol = line.substring(31, 34).trim();
+      atoms.push({ x, y, z, symbol, idx: i });
+    }
+
+    atoms.forEach((atom, idx) => {
+      let color = 0x94a3b8;
+      const symUpper = atom.symbol.toUpperCase();
+      if (symUpper === 'C') color = 0x111827;
+      if (symUpper === 'H') color = 0xf9fafb;
+      if (symUpper === 'O') color = 0xef4444;
+      if (symUpper === 'N') color = 0x3b82f6;
+      if (symUpper === 'S') color = 0xeab308;
+
+      const baseRadius = ballRadii[symUpper] || 0.25;
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.25, metalness: 0.1 });
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(baseRadius, 24, 24), mat);
+      mesh.position.set(atom.x, atom.y, atom.z);
+      mesh.userData = { symbol: `${atom.symbol}${idx + 1}`, isAtom: true };
+
+      customMoleculeGroup.add(mesh);
+      pubchemAtoms.push({ mesh, symbol: atom.symbol, pos: new THREE.Vector3(atom.x, atom.y, atom.z) });
+    });
+
+    let bondsFound = false;
+    if (numBonds > 0 && lines.length >= 4 + numAtoms + numBonds) {
+      for (let b = 0; b < numBonds; b++, lineIdx++) {
+        const line = lines[lineIdx];
+        if (!line || line.length < 6) continue;
+        const a1Idx = parseInt(line.substring(0, 3).trim()) - 1;
+        const a2Idx = parseInt(line.substring(3, 6).trim()) - 1;
+        if (pubchemAtoms[a1Idx] && pubchemAtoms[a2Idx]) {
+          createBondMesh(pubchemAtoms[a1Idx].pos, pubchemAtoms[a2Idx].pos);
+          bondsFound = true;
+        }
+      }
+    }
+
+    if (!bondsFound) {
+      for (let i = 0; i < pubchemAtoms.length; i++) {
+        for (let j = i + 1; j < pubchemAtoms.length; j++) {
+          const dist = pubchemAtoms[i].pos.distanceTo(pubchemAtoms[j].pos);
+          const maxBondDist = (pubchemAtoms[i].symbol === 'H' || pubchemAtoms[j].symbol === 'H') ? 1.3 : 1.7;
+          if (dist > 0.4 && dist <= maxBondDist) {
+            createBondMesh(pubchemAtoms[i].pos, pubchemAtoms[j].pos);
+          }
+        }
+      }
+    }
+
+    const box = new THREE.Box3().setFromObject(customMoleculeGroup);
+    const center = box.getCenter(new THREE.Vector3());
+    customMoleculeGroup.position.sub(center);
+
+    document.getElementById('viewAngleVal').innerText = "PubChem Structure";
+    document.getElementById('energyVal').innerText = "N/A";
+    document.getElementById('distVal').innerText = "--";
+    document.getElementById('strainVal').innerText = "N/A";
+    updateChartHighlight(-1);
+    rebuildLabels();
+  }
+
+  function createBondMesh(p1, p2) {
+    const dist = p1.distanceTo(p2);
+    const bondGeo = new THREE.CylinderGeometry(0.05, 0.05, dist, 12);
+    const bond = new THREE.Mesh(bondGeo, bondMat.clone());
+    bond.position.copy(p1).add(p2).multiplyScalar(0.5);
+    bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+    bond.isCylinder = true;
+    customMoleculeGroup.add(bond);
+  }
+
+  // --- 13. Main Loop ---
+  initCyclohexane();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    
+    updateHydrogensAndBonds();
+    updateLabelsPosition();
+
+    if (isCyclohexaneMode && hydrogenMeshes.length >= 7) {
+      const h1Ax = hydrogenMeshes[0];
+      const h4Ax = hydrogenMeshes[6];
+      const dist = h1Ax.position.distanceTo(h4Ax.position);
+
+      const distElem = document.getElementById('distVal');
+      const strainElem = document.getElementById('strainVal');
+
+      distElem.innerText = dist.toFixed(2) + " Å";
+
+      if (dist < 2.2) {
+        distElem.className = "stat-value alert";
+        strainElem.innerText = "HIGH (Flagpole Clash)";
+        strainElem.className = "stat-value alert";
+        
+        h1Ax.material.color.setHex(0xef4444);
+        h4Ax.material.color.setHex(0xef4444);
+      } else {
+        distElem.className = "stat-value";
+        strainElem.innerText = "Minimal";
+        strainElem.className = "stat-value";
+        if (!isHighlighted) {
+          h1Ax.material.color.setHex(0xf3f4f6);
+          h4Ax.material.color.setHex(0xf3f4f6);
+        }
+      }
+    }
+
+    controls.update();
+    composer.render();
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+</body>
+</html>
